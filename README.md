@@ -6,6 +6,19 @@ Product and package homepage: https://evalgate.com.
 
 Requires Ruby 3.2 or newer. Only Ruby standard/default libraries are used.
 
+Install the reviewed [v3.15.0 source](https://github.com/evalgate/evalgate-ruby/tree/v3.15.0)
+by building the gem from that release tag:
+
+```sh
+git clone --branch v3.15.0 --depth 1 https://github.com/evalgate/evalgate-ruby.git
+cd evalgate-ruby
+gem build evalgate.gemspec
+gem install --local --no-document evalgate-sdk-3.15.0.gem
+```
+
+RubyGems publication is pending the account owner's trusted publisher setup.
+After RubyGems publication, the registry installation command will be:
+
 ```sh
 gem install evalgate-sdk --version 3.15.0
 ```
@@ -61,14 +74,18 @@ cursors and no-progress pages, and raises when `max_pages` is exhausted rather
 than silently truncating. Each HTTP operation defaults to a 30 second timeout;
 set `timeout:` at client creation to change it.
 
-To maintain or verify this independent package:
+To verify an independent checkout of this Ruby package:
 
 ```sh
-node scripts/generate-sdk-ecosystems.mjs --check
-cd src/packages/sdk-ruby
 ruby -Ilib test/client_test.rb
 gem build evalgate.gemspec
 gem install --local --no-document evalgate-sdk-3.15.0.gem
+```
+
+From the platform source repository, check generated client freshness:
+
+```sh
+node scripts/generate-sdk-ecosystems.mjs --check
 ```
 
 The gem uses an explicit file allowlist: runtime Ruby, RBS, README, MIT license,
