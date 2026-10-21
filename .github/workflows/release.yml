@@ -1,0 +1,26 @@
+name: Publish Ruby SDK
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    environment: release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@824c0e29fdfc7d689c191c27acc969d2d04b7dd8
+        with:
+          ruby-version: '3.4'
+      - run: gem install --no-document minitest:6.0.6 rbs:4.2.0
+      - run: ruby -Ilib test/client_test.rb
+      - run: rbs -I sig validate
+      - run: gem build evalgate.gemspec --output "$RUNNER_TEMP/evalgate-sdk.gem"
+      - uses: rubygems/configure-rubygems-credentials@f5a32efa94076b80b28556b2d3b04cb3707b6df1
+      - run: gem push "$RUNNER_TEMP/evalgate-sdk.gem"

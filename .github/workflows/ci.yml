@@ -1,0 +1,27 @@
+name: Ruby SDK
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@824c0e29fdfc7d689c191c27acc969d2d04b7dd8
+        with:
+          ruby-version: '3.4'
+      - run: gem install --no-document minitest:6.0.6 rbs:4.2.0
+      - run: ruby -Ilib test/client_test.rb
+      - run: rbs -I sig validate
+      - name: Build and install the gem in a clean location
+        run: |
+          set -euo pipefail
+          gem build evalgate.gemspec --output "$RUNNER_TEMP/evalgate-sdk.gem"
+          gem install --local --no-document --install-dir "$RUNNER_TEMP/gem-install" "$RUNNER_TEMP/evalgate-sdk.gem"
+          cd "$RUNNER_TEMP"
+          GEM_HOME="$RUNNER_TEMP/gem-install" GEM_PATH="$RUNNER_TEMP/gem-install" ruby -revalgate -e 'abort "wrong version" unless EvalGate::VERSION == "3.15.0"'
