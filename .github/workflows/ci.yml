@@ -3,6 +3,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      verify_registry:
+        description: Verify the manifest version from public RubyGems
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -32,3 +37,34 @@ jobs:
           name: verified-ruby-sdk-${{ github.sha }}
           path: ${{ runner.temp }}/evalgate-sdk.gem
           if-no-files-found: error
+  installed-gem:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.verify_registry)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@824c0e29fdfc7d689c191c27acc969d2d04b7dd8
+        with:
+          ruby-version: '3.4'
+      - name: Install the public gem in an independent consumer
+        run: |
+          set -euo pipefail
+          export EXPECTED_VERSION="$(ruby -rjson -e 'puts JSON.parse(File.read("generation.json")).fetch("version")')"
+          export EXPECTED_SPEC="$(ruby -rjson -e 'puts JSON.parse(File.read("generation.json")).fetch("specVersion")')"
+          export EXPECTED_OPERATIONS="$(ruby -rjson -e 'puts JSON.parse(File.read("generation.json")).fetch("operationCount")')"
+          export EXPECTED_DIGEST="$(ruby -rjson -e 'puts JSON.parse(File.read("generation.json")).fetch("openapiSha256")')"
+          export GEM_HOME="$RUNNER_TEMP/public-gems"
+          export GEM_PATH="$GEM_HOME"
+          unset GEM_HOST_API_KEY RUBYGEMS_API_KEY
+          cd "$RUNNER_TEMP"
+          gem install --no-document --clear-sources --source https://rubygems.org evalgate-sdk --version "$EXPECTED_VERSION"
+          ruby -revalgate -rjson <<'RUBY'
+          abort "wrong version" unless EvalGate::VERSION == ENV.fetch("EXPECTED_VERSION")
+          abort "wrong API contract" unless EvalGate::SPEC_VERSION == ENV.fetch("EXPECTED_SPEC")
+          abort "wrong operation inventory" unless EvalGate::OPERATIONS.length == Integer(ENV.fetch("EXPECTED_OPERATIONS"))
+          installed = Gem::Specification.find_by_name("evalgate-sdk").full_gem_path
+          manifest = JSON.parse(File.read(File.join(installed, "generation.json")))
+          abort "wrong contract digest" unless manifest.fetch("openapiSha256") == ENV.fetch("EXPECTED_DIGEST")
+          puts "Public RubyGems install verified: #{EvalGate::VERSION}, OpenAPI #{EvalGate::SPEC_VERSION}, #{EvalGate::OPERATIONS.length} operations"
+          RUBY
