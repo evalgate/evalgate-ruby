@@ -21,7 +21,8 @@ jobs:
       - name: Build and install the gem in a clean location
         run: |
           set -euo pipefail
+          export EXPECTED_VERSION="$(ruby -rjson -e 'puts JSON.parse(File.read("generation.json")).fetch("version")')"
           gem build evalgate.gemspec --output "$RUNNER_TEMP/evalgate-sdk.gem"
           gem install --local --no-document --install-dir "$RUNNER_TEMP/gem-install" "$RUNNER_TEMP/evalgate-sdk.gem"
           cd "$RUNNER_TEMP"
-          GEM_HOME="$RUNNER_TEMP/gem-install" GEM_PATH="$RUNNER_TEMP/gem-install" ruby -revalgate -e 'abort "wrong version" unless EvalGate::VERSION == "3.15.0"'
+          GEM_HOME="$RUNNER_TEMP/gem-install" GEM_PATH="$RUNNER_TEMP/gem-install" ruby -revalgate -e 'abort "wrong version" unless EvalGate::VERSION == ENV.fetch("EXPECTED_VERSION")'
