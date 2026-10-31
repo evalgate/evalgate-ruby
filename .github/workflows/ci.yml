@@ -17,6 +17,7 @@ jobs:
           ruby-version: '3.4'
       - run: gem install --no-document minitest:6.0.6 rbs:4.2.0
       - run: ruby -Ilib test/client_test.rb
+      - run: ruby .github/publish_test.rb
       - run: rbs -I sig validate
       - name: Build and install the gem in a clean location
         run: |
@@ -26,3 +27,8 @@ jobs:
           gem install --local --no-document --install-dir "$RUNNER_TEMP/gem-install" "$RUNNER_TEMP/evalgate-sdk.gem"
           cd "$RUNNER_TEMP"
           GEM_HOME="$RUNNER_TEMP/gem-install" GEM_PATH="$RUNNER_TEMP/gem-install" ruby -revalgate -e 'abort "wrong version" unless EvalGate::VERSION == ENV.fetch("EXPECTED_VERSION")'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: verified-ruby-sdk-${{ github.sha }}
+          path: ${{ runner.temp }}/evalgate-sdk.gem
+          if-no-files-found: error

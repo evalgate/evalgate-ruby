@@ -1,6 +1,11 @@
 name: Publish Ruby SDK
 on:
   workflow_dispatch:
+    inputs:
+      rubygems_owner_id:
+        description: Numeric RubyGems account ID from Pending Trusted Publishers
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
@@ -22,5 +27,7 @@ jobs:
       - run: ruby -Ilib test/client_test.rb
       - run: rbs -I sig validate
       - run: gem build evalgate.gemspec --output "$RUNNER_TEMP/evalgate-sdk.gem"
-      - uses: rubygems/configure-rubygems-credentials@f5a32efa94076b80b28556b2d3b04cb3707b6df1
-      - run: gem push "$RUNNER_TEMP/evalgate-sdk.gem"
+      - name: Publish with an explicit RubyGems account owner
+        env:
+          RUBYGEMS_OWNER_ID: ${{ inputs.rubygems_owner_id }}
+        run: ruby .github/publish.rb
