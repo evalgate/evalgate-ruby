@@ -6,21 +6,10 @@ Product and package homepage: https://evalgate.com.
 
 Requires Ruby 3.2 or newer. Only Ruby standard/default libraries are used.
 
-Install the reviewed [v3.15.0 source](https://github.com/evalgate/evalgate-ruby/tree/v3.15.0)
-by building the gem from that release tag:
+Install from RubyGems:
 
 ```sh
-git clone --branch v3.15.0 --depth 1 https://github.com/evalgate/evalgate-ruby.git
-cd evalgate-ruby
-gem build evalgate.gemspec
-gem install --local --no-document evalgate-sdk-3.15.0.gem
-```
-
-RubyGems publication is pending the account owner's trusted publisher setup.
-After RubyGems publication, the registry installation command will be:
-
-```sh
-gem install evalgate-sdk --version 3.15.0
+gem install evalgate-sdk --version 3.17.0
 ```
 
 ```ruby
@@ -79,7 +68,7 @@ To verify an independent checkout of this Ruby package:
 ```sh
 ruby -Ilib test/client_test.rb
 gem build evalgate.gemspec
-gem install --local --no-document evalgate-sdk-3.15.0.gem
+gem install --local --no-document evalgate-sdk-3.17.0.gem
 ```
 
 From the platform source repository, check generated client freshness:

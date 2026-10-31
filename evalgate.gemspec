@@ -15,7 +15,6 @@ Gem::Specification.new do |spec|
   spec.metadata = {
     "homepage_uri" => "https://evalgate.com",
     "documentation_uri" => "https://www.evalgate.com/docs/sdk/ruby",
-    "source_code_uri" => "https://github.com/evalgate/evalgate-ruby",
     "bug_tracker_uri" => "https://www.evalgate.com/contact",
     "changelog_uri" => "https://www.evalgate.com/changelog"
   }
