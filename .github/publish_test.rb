@@ -1,5 +1,5 @@
 require "minitest/autorun"
-require "minitest/mock"
+require "stringio"
 require "tempfile"
 require_relative "publish"
 
@@ -18,6 +18,20 @@ class SdkPublicationTest < Minitest::Test
     @gem.close!
   end
 
+  def with_release_calls(exchange:, push:)
+    original_exchange = EvalGateSdkPublication.method(:request_json)
+    original_push = EvalGateSdkPublication.method(:system)
+    original_stdout = $stdout
+    EvalGateSdkPublication.define_singleton_method(:request_json, exchange)
+    EvalGateSdkPublication.define_singleton_method(:system, push)
+    $stdout = StringIO.new
+    yield
+  ensure
+    $stdout = original_stdout
+    EvalGateSdkPublication.define_singleton_method(:request_json, original_exchange)
+    EvalGateSdkPublication.define_singleton_method(:system, original_push)
+  end
+
   def test_owner_is_sent_as_a_string_and_key_only_reaches_gem_child
     requests = []
     push = nil
@@ -25,12 +39,8 @@ class SdkPublicationTest < Minitest::Test
       requests << request
       requests.length == 1 ? { "value" => "fixture-jwt" } : { "rubygems_api_key" => "fixture-key" }
     end
-    capture_io do
-      EvalGateSdkPublication.stub(:request_json, exchange) do
-        EvalGateSdkPublication.stub(:system, ->(*arguments) { push = arguments; true }) do
-          EvalGateSdkPublication.publish(owner: "12345", gem_path: @gem.path)
-        end
-      end
+    with_release_calls(exchange: exchange, push: ->(*arguments) { push = arguments; true }) do
+      EvalGateSdkPublication.publish(owner: "12345", gem_path: @gem.path)
     end
     assert_equal "Bearer fixture-request-token", requests[0]["Authorization"]
     assert_includes URI.decode_www_form(requests[0].uri.query), ["audience", "rubygems.org"]
@@ -42,7 +52,10 @@ class SdkPublicationTest < Minitest::Test
 
   def test_missing_or_mutable_owner_reference_fails_before_network
     ["", "paul", "0", "12\n34"].each do |owner|
-      EvalGateSdkPublication.stub(:request_json, ->(*) { flunk "must not request a token" }) do
+      with_release_calls(
+        exchange: ->(*) { flunk "must not request a token" },
+        push: ->(*) { flunk "must not publish" }
+      ) do
         assert_raises(EvalGateSdkPublication::ReleaseError) do
           EvalGateSdkPublication.publish(owner: owner, gem_path: @gem.path)
         end
@@ -51,26 +64,26 @@ class SdkPublicationTest < Minitest::Test
   end
 
   def test_failed_exchange_cannot_push_a_gem
-    capture_io do
-      EvalGateSdkPublication.stub(:request_json, ->(*) { raise EvalGateSdkPublication::ReleaseError, "fixture exchange rejection" }) do
-        EvalGateSdkPublication.stub(:system, ->(*) { flunk "must not push after exchange failure" }) do
-          assert_raises(EvalGateSdkPublication::ReleaseError) do
-            EvalGateSdkPublication.publish(owner: "12345", gem_path: @gem.path)
-          end
+    [0, 1].each do |failure_index|
+      request_index = -1
+      exchange = lambda do |*|
+        request_index += 1
+        raise EvalGateSdkPublication::ReleaseError, "fixture exchange rejection" if request_index == failure_index
+        { "value" => "fixture-jwt" }
+      end
+      with_release_calls(exchange: exchange, push: ->(*) { flunk "must not push after exchange failure" }) do
+        assert_raises(EvalGateSdkPublication::ReleaseError) do
+          EvalGateSdkPublication.publish(owner: "12345", gem_path: @gem.path)
         end
       end
     end
   end
 
   def test_failed_gem_push_is_a_failed_release
-    capture_io do
-      responses = [{ "value" => "fixture-jwt" }, { "rubygems_api_key" => "fixture-key" }]
-      EvalGateSdkPublication.stub(:request_json, ->(*) { responses.shift }) do
-        EvalGateSdkPublication.stub(:system, ->(*) { false }) do
-          assert_raises(EvalGateSdkPublication::ReleaseError) do
-            EvalGateSdkPublication.publish(owner: "12345", gem_path: @gem.path)
-          end
-        end
+    responses = [{ "value" => "fixture-jwt" }, { "rubygems_api_key" => "fixture-key" }]
+    with_release_calls(exchange: ->(*) { responses.shift }, push: ->(*) { false }) do
+      assert_raises(EvalGateSdkPublication::ReleaseError) do
+        EvalGateSdkPublication.publish(owner: "12345", gem_path: @gem.path)
       end
     end
   end
