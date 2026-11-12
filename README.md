@@ -9,7 +9,7 @@ Requires Ruby 3.2 or newer. Only Ruby standard/default libraries are used.
 Install from RubyGems:
 
 ```sh
-gem install evalgate-sdk --version 3.17.0
+gem install evalgate-sdk --version 3.18.2
 ```
 
 ```ruby
@@ -68,7 +68,7 @@ To verify an independent checkout of this Ruby package:
 ```sh
 ruby -Ilib test/client_test.rb
 gem build evalgate.gemspec
-gem install --local --no-document evalgate-sdk-3.17.0.gem
+gem install --local --no-document evalgate-sdk-3.18.2.gem
 ```
 
 From the platform source repository, check generated client freshness:
